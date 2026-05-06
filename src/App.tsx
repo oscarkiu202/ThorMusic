@@ -1,126 +1,115 @@
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { Sidebar } from './components/Layout/Sidebar'
+import { Player } from './components/Layout/Player'
+import { Login } from './components/Auth/Login'
+import { Register } from './components/Auth/Register'
+import { CreatePlaylistModal } from './components/Playlists/CreatePlaylistModal'
+import { Home } from './pages/Home'
+import { Search } from './pages/Search'
+import { Library } from './pages/Library'
+import { PlaylistPage } from './pages/Playlist'
+import { Admin } from './pages/Admin'
+import { playlistsService } from './services/playlists'
+import type { Playlist } from './types'
 
-const playlists = [
-  { title: 'Mood Booster', subtitle: 'Pop + Feel-Good', color: '#1db954' },
-  { title: 'Chill Vibes', subtitle: 'Downtempo and lounge', color: '#5a5d74' },
-  { title: 'Deep Focus', subtitle: 'Ambient, instrumental', color: '#2f4b6a' },
-  { title: 'Top Hits', subtitle: 'Today’s favorites', color: '#8c489f' },
-]
+function ProtectedLayout() {
+  const { user, loading } = useAuth()
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [showCreate, setShowCreate] = useState(false)
 
-const tracks = [
-  { title: 'Electric Dreams', artist: 'Nova Pulse', duration: '3:42' },
-  { title: 'Night Drive', artist: 'Luna Stereo', duration: '4:08' },
-  { title: 'Summer Blue', artist: 'Arcade Bloom', duration: '3:19' },
-  { title: 'Golden Hour', artist: 'Velvet Ray', duration: '4:21' },
-  { title: 'Afterglow', artist: 'Skyline Hearts', duration: '5:00' },
-]
+  useEffect(() => {
+    if (user) {
+      playlistsService.getMine().then(setPlaylists).catch(() => {})
+    }
+  }, [user])
 
-function App() {
+  if (loading) return (
+    <div className="min-h-screen bg-thor-bg flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 rounded-full border-2 border-thor-accent border-t-transparent animate-spin mx-auto mb-4" />
+        <p className="text-thor-muted font-body text-sm">Cargando...</p>
+      </div>
+    </div>
+  )
+
+  if (!user) return <Navigate to="/login" replace />
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">T</div>
-          <span>Thorify</span>
-        </div>
+    <div className="flex h-screen bg-thor-bg text-thor-text overflow-hidden">
+      {showCreate && (
+        <CreatePlaylistModal
+          onClose={() => setShowCreate(false)}
+          onCreate={(pl) => setPlaylists((prev) => [pl, ...prev])}
+        />
+      )}
 
-        <nav className="nav-group">
-          <button className="nav-button active">Inicio</button>
-          <button className="nav-button">Buscar</button>
-          <button className="nav-button">Tu Biblioteca</button>
-        </nav>
+      <Sidebar
+        playlists={playlists}
+        onCreatePlaylist={() => setShowCreate(true)}
+      />
 
-        <div className="library">
-          <p className="library-title">Tus playlists</p>
-          <ul>
-            <li>Rock Clasicos</li>
-            <li>Electronica Chill</li>
-            <li>Favoritos</li>
-            <li>Recientes</li>
-          </ul>
-        </div>
-      </aside>
-
-      <main className="main-content">
-        <header className="top-bar">
-          <div>
-            <h1>Buen día</h1>
-            <p>Explora música nueva, playlists y tus favoritos.</p>
-          </div>
-          <button className="profile-button">Perfil</button>
-        </header>
-
-        <section className="hero-card">
-          <div className="hero-cover">
-            <img src={heroImg} alt="Portada de álbum" />
-          </div>
-          <div className="hero-meta">
-            <span className="eyebrow">Playlist destacada</span>
-            <h2>Ritmos energéticos</h2>
-            <p>Una selección perfecta para concentrarte y subir el ánimo.</p>
-            <div className="hero-actions">
-              <button className="btn play">Reproducir</button>
-              <button className="btn secondary">Seguir</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="playlist-grid">
-          {playlists.map((playlist) => (
-            <article key={playlist.title} className="playlist-card" style={{ background: playlist.color }}>
-              <div>
-                <p>{playlist.title}</p>
-                <span>{playlist.subtitle}</span>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <section className="track-list-section">
-          <div className="section-header">
-            <div>
-              <h3>Tracks recientes</h3>
-              <p>Continuá tu sesión con estas canciones.</p>
-            </div>
-            <button className="link-button">Ver todo</button>
-          </div>
-
-          <div className="track-list">
-            {tracks.map((track) => (
-              <div key={track.title} className="track-item">
-                <div>
-                  <p className="track-title">{track.title}</p>
-                  <p className="track-artist">{track.artist}</p>
-                </div>
-                <span>{track.duration}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/playlist/:id" element={<PlaylistPage />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
-      <footer className="player-bar">
-        <div className="player-info">
-          <div className="now-playing-cover">
-            <img src={heroImg} alt="Now playing" />
-          </div>
-          <div>
-            <p className="track-title">Electric Dreams</p>
-            <p className="track-artist">Nova Pulse</p>
-          </div>
-        </div>
-        <div className="player-controls">
-          <button>⏮</button>
-          <button className="play-button">⏯</button>
-          <button>⏭</button>
-        </div>
-        <div className="player-extra">
-          <span>03:12 / 03:42</span>
-        </div>
-      </footer>
+      <Player />
     </div>
   )
 }
 
-export default App
+function AuthLayout() {
+  const { user, loading } = useAuth()
+
+  if (loading) return (
+    <div className="min-h-screen bg-thor-bg flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-2 border-thor-accent border-t-transparent animate-spin" />
+    </div>
+  )
+
+  if (user) return <Navigate to="/" replace />
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth()
+
+  if (loading) return (
+    <div className="min-h-screen bg-thor-bg flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-2 border-thor-accent border-t-transparent animate-spin" />
+    </div>
+  )
+
+  return (
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+      <Route path="/*" element={<ProtectedLayout />} />
+    </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}
